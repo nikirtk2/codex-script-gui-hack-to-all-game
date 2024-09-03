@@ -1,0 +1,198 @@
+local player = game.Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- Функция для создания интерфейса
+local function createInterface()
+    -- Создаем ScreenGui
+    local gui = Instance.new("ScreenGui")
+    gui.Parent = game.CoreGui
+
+    -- Создаем Frame для анимации загрузки
+    local loadingFrame = Instance.new("Frame")
+    loadingFrame.Size = UDim2.new(0, 400, 0, 200)
+    loadingFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+    loadingFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+    loadingFrame.Active = true
+    loadingFrame.Draggable = true
+    loadingFrame.Parent = gui
+
+    -- Текст "Запускаю меня..."
+    local loadingText = Instance.new("TextLabel")
+    loadingText.Size = UDim2.new(1, 0, 1, 0)
+    loadingText.Text = "Запускаю меня..."
+    loadingText.TextColor3 = Color3.new(1, 1, 1)
+    loadingText.BackgroundTransparency = 1
+    loadingText.Parent = loadingFrame
+
+    -- Ждем 5 секунд для загрузки
+    wait(5)
+
+    -- Удаляем загрузочный экран
+    loadingFrame:Destroy()
+
+    -- Создаем основной Frame в стиле Windows 11
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 300, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -150, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = gui
+
+    -- Создаем кнопки внутри основного фрейма
+    local function createButton(text, position)
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0, 280, 0, 40)
+        button.Position = position
+        button.Text = text
+        button.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.BorderColor3 = Color3.new(0, 0, 1)
+        button.Parent = mainFrame
+        return button
+    end
+
+    -- Кнопка "Прыжок"
+    local jumpButton = createButton("Создать кнопку прыжка", UDim2.new(0, 10, 0, 10))
+    jumpButton.MouseButton1Click:Connect(function()
+        local jumpGui = Instance.new("ScreenGui")
+        jumpGui.Parent = game.CoreGui
+
+        local jumpButton = Instance.new("TextButton")
+        jumpButton.Size = UDim2.new(0, 100, 0, 50)
+        jumpButton.Position = UDim2.new(1, -110, 1, -110)
+        jumpButton.Text = "Прыжок"
+        jumpButton.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+        jumpButton.TextColor3 = Color3.new(1, 1, 1)
+        jumpButton.Parent = jumpGui
+
+        jumpButton.MouseButton1Click:Connect(function()
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.Jump = true
+            end
+        end)
+    end)
+
+    -- Переменная для отслеживания состояния noclip
+    local noclipEnabled = false
+
+    -- Кнопка "Noclip"
+    local noclipButton = createButton("Noclip", UDim2.new(0, 10, 0, 60))
+    noclipButton.MouseButton1Click:Connect(function()
+        noclipEnabled = not noclipEnabled
+        noclipButton.Text = noclipEnabled and "Noclip: Вкл" or "Noclip: Выкл"
+        
+        if noclipEnabled then
+            noclipLoop = game:GetService("RunService").Stepped:Connect(function()
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid:ChangeState(11)
+                end
+            end)
+        else
+            if noclipLoop then
+                noclipLoop:Disconnect()
+            end
+        end
+    end)
+
+    -- Переменная для отслеживания состояния полета
+    local flyingEnabled = false
+    local flySpeed = 50
+    local flyControl
+
+    -- Функция для полета
+    local function startFlying()
+        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+        local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+
+        flyControl = {
+            Forward = 0,
+            Backward = 0,
+            Left = 0,
+            Right = 0,
+            Up = 0,
+            Down = 0,
+        }
+
+        local bodyGyro = Instance.new("BodyGyro")
+        bodyGyro.P = 9e4
+        bodyGyro.maxTorque = Vector3.new(9e4, 9e4, 9e4)
+        bodyGyro.Parent = rootPart
+
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.maxForce = Vector3.new(9e4, 9e4, 9e4)
+        bodyVelocity.Parent = rootPart
+
+        local flyLoop = game:GetService("RunService").Stepped:Connect(function()
+            local cam = workspace.CurrentCamera
+            bodyGyro.cframe = cam.CFrame
+            bodyVelocity.velocity = ((cam.CFrame.LookVector * (flyControl.Forward + flyControl.Backward)) + ((cam.CFrame.RightVector * (flyControl.Right + flyControl.Left)) + (Vector3.new(0, flyControl.Up + flyControl.Down, 0)))) * flySpeed
+        end)
+
+        mouse.KeyDown:Connect(function(key)
+            if key:lower() == "w" then flyControl.Forward = 1 end
+            if key:lower() == "s" then flyControl.Backward = -1 end
+            if key:lower() == "a" then flyControl.Left = -1 end
+            if key:lower() == "d" then flyControl.Right = 1 end
+            if key:lower() == "e" then flyControl.Up = 1 end
+            if key:lower() == "q" then flyControl.Down = -1 end
+        end)
+
+        mouse.KeyUp:Connect(function(key)
+            if key:lower() == "w" then flyControl.Forward = 0 end
+            if key:lower() == "s" then flyControl.Backward = 0 end
+            if key:lower() == "a" then flyControl.Left = 0 end
+            if key:lower() == "d" then flyControl.Right = 0 end
+            if key:lower() == "e" then flyControl.Up = 0 end
+            if key:lower() == "q" then flyControl.Down = 0 end
+        end)
+
+        return flyLoop, bodyGyro, bodyVelocity
+    end
+
+    -- Кнопка "Летать"
+    local flyButton = createButton("Летать", UDim2.new(0, 10, 0, 110))
+    flyButton.MouseButton1Click:Connect(function()
+        flyingEnabled = not flyingEnabled
+        flyButton.Text = flyingEnabled and "Летать: Вкл" or "Летать: Выкл"
+        
+        if flyingEnabled then
+            flyLoop, bodyGyro, bodyVelocity = startFlying()
+        else
+            if flyLoop then flyLoop:Disconnect() end
+            if bodyGyro then bodyGyro:Destroy() end
+            if bodyVelocity then bodyVelocity:Destroy() end
+        end
+    end)
+
+    -- Кнопка "Выдать все предметы"
+    local giveToolsButton = createButton("Выдать все предметы", UDim2.new(0, 10, 0, 160))
+    giveToolsButton.MouseButton1Click:Connect(function()
+        for _, tool in pairs(game.Lighting:GetChildren()) do
+            if tool:IsA("Tool") then
+                tool:Clone().Parent = player.Backpack
+            end
+        end
+    end)
+
+    -- Кнопка "Кинуть случайный предмет"
+    local dropRandomToolButton = createButton("Кинуть случайный предмет", UDim2.new(0, 10, 0, 210))
+    dropRandomToolButton.MouseButton1Click:Connect(function()
+        local tools = {}
+        for _, tool in pairs(game.Lighting:GetChildren()) do
+            if tool:IsA("Tool") then
+                table.insert(tools, tool)
+            end
+        end
+        if #tools > 0 then
+            local randomTool = tools[math.random(1, #tools)]
+            randomTool:Clone().Parent = workspace
+            randomTool.Handle.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, 5, 0)
+        end
+    end)
+end
+
+-- Запуск интерфейса
+createInterface()
